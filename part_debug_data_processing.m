@@ -10,6 +10,8 @@ T_l_i = part_data_read(target_folder,'T_l_i',step);% 读取T_l_i
 
 tau_p = part_data_read(target_folder,'tau_p',step);% 读取'tau_p'
 
+
+
 % 检查获取数据的编号是否一致
 check = sum(abs(tau_p(:,1)-T_l_i(:,1)));
 if(check)
@@ -17,31 +19,39 @@ if(check)
 end
 
 % 绘制散点图：
-scatter(T_l_i(:,2),tau_p(:,2),'.',DisplayName='T_l_1');
+scatter(T_l_i(:,2),tau_p(:,2),'.',DisplayName='$T_{L,1}$');
 hold on
-scatter(T_l_i(:,3),tau_p(:,2),'.',DisplayName='T_l_2');
-scatter(T_l_i(:,4),tau_p(:,2),'.',DisplayName='T_l_3');
+scatter(T_l_i(:,3),tau_p(:,2),'.',DisplayName='$T_{L,2}$');
+scatter(T_l_i(:,4),tau_p(:,2),'.',DisplayName='$T_{L,3}$');
 plot([1e-2,max(tau_p(:,2))],[1e-2,max(tau_p(:,2))],DisplayName='X = Y');
 hold off
 set(gca,'XScale','log')
 set(gca,'YScale','log')
-legend();
-xlabel('T_L',Interpreter='tex')
-ylabel('\tau_p',Interpreter='tex')
+legend('Interpreter','latex');
+xlabel('$T_{L,i}$','Interpreter','latex');
+ylabel('$\tau_p$','Interpreter','latex');
 
 
 % 寻找tau_p<T_l的粒子
-a = find(T_l_i(:,2)>tau_p(:,2));
-a = [a;find(T_l_i(:,3)>tau_p(:,2))];
-a = [a;find(T_l_i(:,4)>tau_p(:,2))];
-a = unique(a);
-error_pos = tau_p(a,3:5);
-scatter3(error_pos(:,1),error_pos(:,2),error_pos(:,3),'.')% 绘制其在流场中的位置
-xlim([0 4*pi]);
-ylim([0 2]);
-zlim([0 2*pi]);
+% a = find(T_l_i(:,2)>tau_p(:,2));
+% a = [a;find(T_l_i(:,3)>tau_p(:,2))];
+% a = [a;find(T_l_i(:,4)>tau_p(:,2))];
+% a = unique(a);
+% error_pos = tau_p(a,3:5);
+% scatter3(error_pos(:,1),error_pos(:,2),error_pos(:,3),'.')% 绘制其在流场中的位置
+% xlim([0 4*pi]);
+% ylim([0 2]);
+% zlim([0 2*pi]);
 
+%% 位移验证
 
+% delta_x = part_data_read(target_folder,'delta_x',step);% 读取粒子位移量
+% 
+% % 绘制散点图，观察流向位移与位置的关系
+% scatter(delta_x(:,5),delta_x(:,6),5e4*abs(delta_x(:,2)));
+% xlim([0 4*pi]);
+% ylim([0 2]);
+% box on
 
 
 function result = part_data_read(target_folder,file_mid_name,step)
