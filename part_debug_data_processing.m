@@ -2,7 +2,7 @@
 format long
 clear,clc
 
-target_folder = './data/390debug';% 数据文件夹路径
+target_folder = './data/debug_p_33';% 数据文件夹路径
 
 step = 389;% 待读取的时间步
 
@@ -89,6 +89,20 @@ linear = part_data_read(target_folder,'uvwfnew_linear',step);% 读取数据
 error = abs(second_lagrange(:,2:4)-linear(:,2:4))./abs(second_lagrange(:,2:4));
 
 error = [second_lagrange(:,1),error,second_lagrange(:,5:7)];
+
+
+
+%% P_33验证
+target_folder = './data/debug_P_33_new';% 数据文件夹路径
+
+for step = 1:18% 待读取的时间步
+
+P_33 = part_data_read(target_folder,'P_33',step);% 读取数据
+
+number_less_zero(step) = length(find(P_33(:,2)<=0))+length(find(P_33(:,3)<=0))+length(find(P_33(:,4)<=0));
+end
+
+%% 读取函数
 
 function result = part_data_read(target_folder,file_mid_name,step)
     % 获取符合文件名格式的所有文件

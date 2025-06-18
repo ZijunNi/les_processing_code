@@ -1,12 +1,12 @@
-% 本代买主要对数值格式中的随机参数正定性进行验证
+% 本代码主要对数值格式中的随机参数正定性进行验证
 clear,clc;
 % 设置参数
 % clear,clc;
 format long
 Delta_t = 5e-3;     % 固定时间步长（需小于 T_i 和 tau_p）
-T_max = 100*Delta_t;       % T_i 扫描最大值
-tau_max = 100*Delta_t;     % tau_p 扫描最大值
-num_points = 1000; % 网格分辨率
+T_max = 10000*Delta_t;       % T_i 扫描最大值
+tau_max = 10000*Delta_t;     % tau_p 扫描最大值
+num_points = 5000; % 网格分辨率
 
 % 参数说明:
 % Delta_t : 固定时间步长 (需满足 Delta_t < T_i 和 Delta_t < tau_p)
@@ -15,9 +15,9 @@ num_points = 1000; % 网格分辨率
 % num_points : 每个参数的采样点数
 
 % 生成 T_i 和 tau_p 的网格 (确保大于 Delta_t)
-T_values = linspace(0.01*Delta_t , T_max, num_points);    % 避免 T_i <= Delta_t
-tau_values = linspace(0.01*Delta_t , tau_max, num_points);% 避免 tau_p <= Delta_t
-[T_grid, tau_grid] = meshgrid(T_values, tau_values);
+T_values = linspace(log(1*Delta_t) , log(T_max), num_points);    % 避免 T_i <= Delta_t
+tau_values = linspace(log(1*Delta_t) , log(tau_max), num_points);% 避免 tau_p <= Delta_t
+[T_grid, tau_grid] = meshgrid(exp(T_values), exp(tau_values));
 
 % 预分配结果矩阵
 result_matrix = zeros(size(T_grid));
@@ -101,6 +101,31 @@ figure;
 
 %% 计算P_33^2：
 
+% 本代码主要对数值格式中的随机参数正定性进行验证
+clear,clc;
+% 设置参数
+% clear,clc;
+format long
+Delta_t = 5e-3;     % 固定时间步长（需小于 T_i 和 tau_p）
+T_max = 10000*Delta_t;       % T_i 扫描最大值
+tau_max = 10000*Delta_t;     % tau_p 扫描最大值
+num_points = 5000; % 网格分辨率
+
+% 参数说明:
+% Delta_t : 固定时间步长 (需满足 Delta_t < T_i 和 Delta_t < tau_p)
+% T_max   : T_i 的扫描最大值
+% tau_max : tau_p 的扫描最大值
+% num_points : 每个参数的采样点数
+
+% 生成 T_i 和 tau_p 的网格 (确保大于 Delta_t)
+T_values = linspace(log(1*Delta_t) , log(T_max), num_points);    % 避免 T_i <= Delta_t
+tau_values = linspace(log(1*Delta_t) , log(tau_max), num_points);% 避免 tau_p <= Delta_t
+[T_grid, tau_grid] = meshgrid(exp(T_values), exp(tau_values));
+
+% 预分配结果矩阵
+result_matrix = zeros(size(T_grid));
+
+
 % 逐点计算表达式值
 for i = 1:num_points
     for j = 1:num_points
@@ -108,12 +133,12 @@ for i = 1:num_points
         P_31 = gamma_Gamma(T_grid(i,j), tau_grid(i,j), Delta_t)/sqrt(gamma_2(T_grid(i,j), tau_grid(i,j), Delta_t));
         squared_P_22 = omega_2(T_grid(i,j), tau_grid(i,j), Delta_t)-omega_gamma(T_grid(i,j), tau_grid(i,j), Delta_t)^2/gamma_2(T_grid(i,j), tau_grid(i,j), Delta_t);
         squared_P_32 = (Gamma_Omega(T_grid(i,j), tau_grid(i,j), Delta_t)-P_21*P_31)^2/squared_P_22;
-        % f = omega_2(T_grid(i,j), tau_grid(i,j), Delta_t);
-        % h = omega_gamma(T_grid(i,j), tau_grid(i,j), Delta_t);
-        % g = gamma_2(T_grid(i,j), tau_grid(i,j), Delta_t);
-        result_matrix(i,j) = Gamma_2(T_grid(i,j), tau_grid(i,j), Delta_t)-P_31^2-squared_P_32;
+        squared_P_33(i,j) = Gamma_2(T_grid(i,j), tau_grid(i,j), Delta_t)-P_31^2-squared_P_32;
+        result_matrix(i,j) =  squared_P_33(i,j);
     end
 end
+
+
 
 
 
@@ -142,6 +167,9 @@ figure;
     
     % --- 计算数据范围并设置颜色映射范围 ---
     max_abs = max(abs(result_matrix(:))); % 获取数据绝对值的最大值
+    if(isinf(max_abs))
+        max_abs = max(result_matrix(:));
+    end
     clim([-max_abs, max_abs]);           % 设置对称的颜色范围
     
     % --- 创建自定义红绿渐变色阶 ---
@@ -171,7 +199,7 @@ figure;
     set(gca,'YScale','log')
     xlabel('$T_i/\Delta t$','Interpreter','latex');
     ylabel('$\tau_p/\Delta t$','Interpreter','latex');
-    title('P_{22}计算格式正定性验证');
+    title('P_{33}计算格式正定性验证');
     daspect([1 1 1])
     % --- 显示颜色条 ---
     c = colorbar;
@@ -236,7 +264,7 @@ function result_matrix = plot_expression_positivity(Delta_t, T_max, tau_max, num
     
     % --- 修改颜色映射：负区域深红色，正区域深绿色 ---
     colormap([0.9 0.4 0.4; 0.4 0.9 0.4]); % [深红; 深绿]
-    caxis([-1e-5, 1e-5]);    
+    clim([-1e-5, 1e-5]);    
     % 标签和标题
     xlabel('$T_i/\Delta t$',Interpreter='latex');
     ylabel('$\tau_p/\Delta t$',Interpreter='latex');
