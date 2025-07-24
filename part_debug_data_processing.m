@@ -7,10 +7,12 @@ target_folder = './data/debug_p_33';% 数据文件夹路径
 step = 389;% 待读取的时间步
 
 %% T_l和tau_p的对比验证
+target_folder = 'F:\本机文档\data\data_20250606_st_1\debug';
+step = 1002002;
+for step = 1000002:1000:1064002
+T_l_i = part_data_read(target_folder,'vel_relative',step);% 读取T_l_i
 
-T_l_i = part_data_read(target_folder,'t_l_scatter',step);% 读取T_l_i
-
-tau_p = part_data_read(target_folder,'tau_p_scatter',step);% 读取'tau_p'
+tau_p = part_data_read(target_folder,'dpdx_fluc_fields_interp',step);% 读取'tau_p'
 
 
 
@@ -21,20 +23,22 @@ if(check)
 end
 error_points = 0;
 % 绘制散点图：
-scatter(T_l_i(:,2),tau_p(:,2),'g.',DisplayName='$T_{L,1}$');
+loc = find(abs(T_l_i(:,6)-0.01)<0.01);
+scatter(T_l_i(loc,2)/mean(T_l_i(loc,2)),tau_p(loc,2)/mean(tau_p(loc,2)),'b.',DisplayName='$T_{L,1}$');
 error_points = error_points + length(find(T_l_i(:,2)>tau_p(:,2)));
 hold on
-scatter(T_l_i(:,3),tau_p(:,2),'r.',DisplayName='$T_{L,2}=T_{L,3}$');
+% scatter(T_l_i(:,3),tau_p(:,3),'r.',DisplayName='$T_{L,2}=T_{L,3}$');
 % scatter(T_l_i(:,4),tau_p(:,2),'.',DisplayName='$T_{L,3}$');
 error_points = error_points + length(find(T_l_i(:,3)>tau_p(:,2)));
-
-plot([1e-2,max(tau_p(:,2))],[1e-2,max(tau_p(:,2))],'b-.',DisplayName='X = Y',LineWidth=2);
-hold off
+step
+end
+% plot([1e-2,max(tau_p(:,2))],[1e-2,max(tau_p(:,2))],'b-.',DisplayName='X = Y',LineWidth=2);
+% hold off
 set(gca,'XScale','log')
 set(gca,'YScale','log')
-legend('Interpreter','latex');
-xlabel('$T_{L,i}$','Interpreter','latex');
-ylabel('$\tau_p$','Interpreter','latex');
+% legend('Interpreter','latex');
+xlabel('$u^\prime$','Interpreter','latex');
+ylabel('$\frac{d p^\prime}{d x}$','Interpreter','latex');
 
 
 % 寻找tau_p<T_l的粒子

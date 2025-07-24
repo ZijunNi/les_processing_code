@@ -1,4 +1,5 @@
 /data
+/figure
 /processed_data
 *.asv
 *.mat
