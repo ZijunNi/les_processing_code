@@ -10,7 +10,7 @@ function data_particle = particle_read(begin,step,ending,path,save_name,post_ran
 
 i = 1;
 
-save_name = fullfile("data",save_name);
+save_name = fullfile("processed_data",save_name);
 
 if exist(save_name,'file')
     txt = input('待保存文件已存在，请检查。若要覆盖之，请输入Y，若要增加之，请输入A \n','s');
@@ -39,9 +39,7 @@ for num=begin:step:ending
             PostRank = sprintf('%04d', j-1);
             filename_particle = [path,'scatter-complete-',formattedStr,'-',PostRank,'.dat'];
             wrk_mid = readmatrix(filename_particle);
-            particle_data_mid(:,5:7) = wrk_mid(:,10:12);%第10到12列为压力梯度脉动项
-            particle_data_mid(:,4) = wrk_mid(:,1);%第四列为编号
-            particle_data_mid(:,1:3) = wrk_mid(:,2:4);%第一至三列为位置坐标，以上安排为了兼容旧格式的数据
+            particle_data_mid = wrk_mid;%post输出：int(lna(1,i)),xyzp(1:3,i),lna(2:3,i),uvwpnew(:,i),ee(1:3,i)
             particle_data = [particle_data;particle_data_mid];
         end
         data_particle{i} = particle_data;

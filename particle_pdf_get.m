@@ -11,7 +11,7 @@ function [pdf_particle,exp_y_plus,total_num_part] = particle_pdf_get(N,begin_ste
 % exp_y_plus - pdf_particle对应的垂向坐标
 % total_num_part - 参与统计的粒子总数
 
-filename = fullfile("data",filename);
+filename = fullfile("processed_data",filename);
 
 load(filename)
 

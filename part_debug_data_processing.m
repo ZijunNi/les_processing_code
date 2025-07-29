@@ -6,51 +6,53 @@ target_folder = './data/debug_p_33';% 数据文件夹路径
 
 step = 389;% 待读取的时间步
 
-%% T_l和tau_p的对比验证
+%% 压力梯度脉动和相对速度之关系
 target_folder = 'F:\本机文档\data\data_20250606_st_1\debug';
-step = 1002002;
-for step = 1000002:1000:1064002
-T_l_i = part_data_read(target_folder,'vel_relative',step);% 读取T_l_i
 
-tau_p = part_data_read(target_folder,'dpdx_fluc_fields_interp',step);% 读取'tau_p'
+
+u_prime = [];
+dpdx = [];
+
+% 读取所有粒子数据
+for step = 1000002:1000:1064002
+u_prime_single = part_data_read(target_folder,'vel_relative',step);% 读取T_l_i
+
+dpdx_single = part_data_read(target_folder,'dpdx_fluc_fields_interp',step);% 读取'tau_p'
 
 
 
 % 检查获取数据的编号是否一致
-check = sum(abs(tau_p(:,1)-T_l_i(:,1)));
+check = sum(abs(dpdx_single(:,1)-u_prime_single(:,1)));
 if(check)
     error('待对比的数据中的粒子编号不一致');
 end
-error_points = 0;
-% 绘制散点图：
-loc = find(abs(T_l_i(:,6)-0.01)<0.01);
-scatter(T_l_i(loc,2)/mean(T_l_i(loc,2)),tau_p(loc,2)/mean(tau_p(loc,2)),'b.',DisplayName='$T_{L,1}$');
-error_points = error_points + length(find(T_l_i(:,2)>tau_p(:,2)));
-hold on
-% scatter(T_l_i(:,3),tau_p(:,3),'r.',DisplayName='$T_{L,2}=T_{L,3}$');
-% scatter(T_l_i(:,4),tau_p(:,2),'.',DisplayName='$T_{L,3}$');
-error_points = error_points + length(find(T_l_i(:,3)>tau_p(:,2)));
-step
+
+u_prime = [u_prime; u_prime_single]; % 合并数据
+dpdx = [dpdx; dpdx_single];
+
+disp(step);
 end
-% plot([1e-2,max(tau_p(:,2))],[1e-2,max(tau_p(:,2))],'b-.',DisplayName='X = Y',LineWidth=2);
-% hold off
-set(gca,'XScale','log')
-set(gca,'YScale','log')
-% legend('Interpreter','latex');
-xlabel('$u^\prime$','Interpreter','latex');
-ylabel('$\frac{d p^\prime}{d x}$','Interpreter','latex');
+
+loc = find(abs(u_prime(:,6)-1)>0.997);
+% scatter(T_l_i(:,2),tau_p(:,2),'b.',DisplayName='$T_{L,1}$');
+i = 2; % 轴数，2=x,3=y,4=z;
+[counts, edges] = histcounts(-u_prime(loc,i), "Normalization", "pdf");
+centers = edges(1:end-1) + diff(edges)/2;
+plot(centers, counts, '-', 'DisplayName', ['$u_{r,',num2str(i-1),'}^\prime$']);
+hold on
+[counts, edges] = histcounts(dpdx(loc,2), "Normalization", "pdf");
+centers = edges(1:end-1) + diff(edges)/2;
+plot(centers, counts, '-', 'DisplayName', ['${\mathrm{d}p^\prime}/{\mathrm{d}x_',num2str(i-1),'}$']);
+hold off
+
+% set(gca,'XScale','log')
+% set(gca,'YScale','log')
+legend('Interpreter','latex');
+% xlabel('$u_r^\prime$','Interpreter','latex');
+% ylabel('$\frac{d p^\prime}{d x}$','Interpreter','latex');
+% xlim([-0.05 0.05])
 
 
-% 寻找tau_p<T_l的粒子
-% a = find(T_l_i(:,2)>tau_p(:,2));
-% a = [a;find(T_l_i(:,3)>tau_p(:,2))];
-% a = [a;find(T_l_i(:,4)>tau_p(:,2))];
-% a = unique(a);
-% error_pos = tau_p(a,3:5);
-% scatter3(error_pos(:,1),error_pos(:,2),error_pos(:,3),'.')% 绘制其在流场中的位置
-% xlim([0 4*pi]);
-% ylim([0 2]);
-% zlim([0 2*pi]);
 
 %% 物理量验证
 figure;
