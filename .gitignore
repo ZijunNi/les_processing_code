@@ -4,3 +4,5 @@
 *.asv
 *.mat
 .DS*
+
+!grid_test.mat
