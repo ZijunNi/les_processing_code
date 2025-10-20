@@ -1,11 +1,11 @@
 % clear,clc
 % % 主函数：调用数据读取和物理验证
 % folderPath = 'F:\本机文档\科研\local_test\particle_solver\runscript\lagrange_data'; 
-folderPath = 'F:\GitHub\particle_solver\runscript\fluid_lagrange_data'; 
+folderPath = 'F:\本机文档\data\bspline_test'; 
 % folderPath = 'F:\本机文档\科研\local_test\particle_solver\runscript\lagrange_data';
 
 % 读取数据
-particleData = load_lagrange_data(folderPath,'fluid',1,1);
+particleData = load_lagrange_data(folderPath,'',1,1);
 particleData(cellfun(@isempty,particleData))=[];
 fprintf('成功读取 %d 个时间步数据\n', length(particleData));
 % 生成格式化的时间字符串
@@ -56,7 +56,7 @@ plot(bin_edges(1:25)*180,bin_edges(1:25)*180,'-.',LineWidth=2,DisplayName='Linea
 plot(bin_edges*180,log(bin_edges*180)/0.4+5,'-.',LineWidth=2,DisplayName='Log Law, $u^+ = \log(y^+)/0.4+5$')
 legend(Interpreter="latex")
 daspect([1/(19) 1/((180)) 1])
-%%
+%% 流体粒子的均方根剖面
 figure;
 plot(bin_centers*180,rms_vel/0.0643994,'o-', 'MarkerSize', 6,'DisplayName','$\sqrt{\overline{(u^\prime)^2}}/u_\tau$');
 % legend(Interpreter="latex")
@@ -64,11 +64,6 @@ xlabel('$y^+$',Interpreter='latex');
 ylabel('$\sqrt{\overline{(u^\prime)^2}}/u_\tau$',Interpreter='latex');
 xlim([0, 180]);
 daspect([1/(3) 1/((180)) 1])
-%% Lagrange时间尺度计算
-close all
-[R_avg,time,T_l,T_l_u,T_l_v,T_l_w] = calculate_lagrange_timescale(particleData{32*16+16}.data);
-
-
 
 %% 临时验证区
 clc;
@@ -96,7 +91,7 @@ function particleData = load_lagrange_data(folderPath,file_prefix,sample_begin,s
     % 读取特定文件夹下所有fluid_*.txt文件并排序存储
     % sample_step - 为采样样本间隔
 
-    fileList = dir(fullfile(folderPath, [file_prefix,'_*.txt']));
+    fileList = dir(fullfile(folderPath, [file_prefix,'*.txt']));
     if isempty(fileList)
         error('未找到符合命名规则fluid_*.txt的文件');
     end
@@ -105,7 +100,7 @@ function particleData = load_lagrange_data(folderPath,file_prefix,sample_begin,s
     fileNumbers = zeros(1, length(fileList));
     for i = 1:length(fileList)
         [~, name] = fileparts(fileList(i).name);
-        numStr = regexp(name, '(?<=fluid_)\d+', 'match', 'once');
+        numStr = regexp(name, ['(?<=',file_prefix,'_)\d+'], 'match', 'once');
         fileNumbers(i) = str2double(numStr);
     end
     [~, sortedIdx] = sort(fileNumbers);
@@ -382,147 +377,6 @@ if plot_switch
 end
 end
 
-function [R_avg, tau, T_L, T_L_u, T_L_v, T_L_w] = calculate_lagrange_timescale(data)
-    % 输入: 
-    %   data - N×7矩阵 [时间, x, y, z, u, v, w]
-    % 输出:
-    %   R_avg - 平均自相关函数
-    %   tau   - 时间延迟向量
-    %   T_L   - 平均拉格朗日时间尺度
-    %   T_L_u - u方向的拉格朗日时间尺度
-    %   T_L_v - v方向的拉格朗日时间尺度
-    %   T_L_w - w方向的拉格朗日时间尺度
-    
-    % 提取数据
-    t = data(:,1);        % 时间列
-    u = data(:,5);         % x方向速度
-    v = data(:,6);         % y方向速度
-    w = data(:,7);         % z方向速度
-    
-    % 检查时间步长均匀性
-    dt = mean(diff(t));
-    if max(abs(diff(t) - dt)) > 1e-5
-        warning('时间步长不均匀，结果可能不准确。建议插值到均匀时间步长。');
-    end
-    
-    % 计算速度脉动 (减去平均值)
-    u_prime = u - mean(u);
-    v_prime = v - mean(v);
-    w_prime = w - mean(w);
-    
-    % 计算各方向自相关函数
-    [R_u, lags] = xcorr(u_prime, 'normalized');
-    [R_v, ~] = xcorr(v_prime, 'normalized');
-    [R_w, ~] = xcorr(w_prime, 'normalized');
-    
-    % 转换为时间延迟
-    tau = lags * dt;
-    
-    % 提取非负延迟部分 (物理相关部分)
-    non_neg_idx = tau >= 0;
-    tau = tau(non_neg_idx);
-    R_u = R_u(non_neg_idx);
-    R_v = R_v(non_neg_idx);
-    R_w = R_w(non_neg_idx);
-    
-    % 计算平均自相关函数
-    R_avg = (R_u + R_v + R_w) / 3;
-    
-    % ===== 分别计算三个方向的时间尺度 =====
-    % u方向
-    zero_cross_idx_u = find(R_u < 0, 1);
-    if isempty(zero_cross_idx_u)
-        zero_cross_idx_u = length(R_u);
-    end
-    T_L_u = trapz(tau(1:zero_cross_idx_u), R_u(1:zero_cross_idx_u));
-    
-    % v方向
-    zero_cross_idx_v = find(R_v < 0, 1);
-    if isempty(zero_cross_idx_v)
-        zero_cross_idx_v = length(R_v);
-    end
-    T_L_v = trapz(tau(1:zero_cross_idx_v), R_v(1:zero_cross_idx_v));
-    
-    % w方向
-    zero_cross_idx_w = find(R_w < 0, 1);
-    if isempty(zero_cross_idx_w)
-        zero_cross_idx_w = length(R_w);
-    end
-    T_L_w = trapz(tau(1:zero_cross_idx_w), R_w(1:zero_cross_idx_w));
-    % ====================================
-    
-    % 计算平均时间尺度 (使用平均自相关函数)
-    zero_cross_idx = find(R_avg < 0, 1);
-    if isempty(zero_cross_idx)
-        zero_cross_idx = length(R_avg);
-        warning('自相关函数未过零点，积分上限使用最大延迟时间');
-    end
-    tau_cut = tau(1:zero_cross_idx);
-    R_cut = R_avg(1:zero_cross_idx);
-    T_L = trapz(tau_cut, R_cut);
-    
-    % 可视化结果
-    figure('Color', 'white')
-    
-    % 自相关函数图
-    % subplot(2,1,1)
-    plot(tau, R_u, 'r--', 'LineWidth', 1.2)
-    hold on
-    plot(tau, R_v, 'g--', 'LineWidth', 1.2)
-    plot(tau, R_w, 'b--', 'LineWidth', 1.2)
-    plot(tau, R_avg, 'k-', 'LineWidth', 2.5)
-    % plot(tau(1:zero_cross_idx), R_avg(1:zero_cross_idx), 'm', 'LineWidth', 2)
-    % xline(tau(zero_cross_idx), 'k--', 'Zero Crossing')
-    yline(0, 'k-')
-    
-    % title('Autocorrelation Function of Velocity', 'FontSize', 14)
-    xlabel('Time $t$', 'FontSize', 12, 'Interpreter','latex')
-    ylabel('Autocorrelation Function of Velocity $R(\tau)$', 'FontSize', 12, 'Interpreter','latex')
-    legend({'Streamwise', 'Wall-normal', 'Spanwise', 'Average'}, ...
-           'Location', 'best', 'FontSize', 10, 'Interpreter','latex')
-    grid on
-    set(gca, 'FontSize', 11)
-    
-    % 粒子轨迹图 (3D)
-    % subplot(2,1,2)
-    % plot3(data(:,2), data(:,3), data(:,4), 'b', 'LineWidth', 1.5)
-    % hold on
-    % scatter3(data(1,2), data(1,3), data(1,4), 100, 'go', 'filled')
-    % scatter3(data(end,2), data(end,3), data(end,4), 100, 'ro', 'filled')
-    % 
-    % title('粒子运动轨迹', 'FontSize', 14)
-    % xlabel('X位置', 'FontSize', 12)
-    % ylabel('Y位置', 'FontSize', 12)
-    % zlabel('Z位置', 'FontSize', 12)
-    % legend({'轨迹', '起点', '终点'}, 'Location', 'best', 'FontSize', 10)
-    % grid on
-    % set(gca, 'FontSize', 11)
-    % xlim([0 4*pi])
-    % xticks(0:pi:4*pi);
-    % xticklabels({ '0','\pi','2\pi','3\pi','4\pi'});
-    % ylim([0 2])
-    % zlim([0 2*pi])
-    % zticks(0:pi:2*pi);
-    % zticklabels({'0','\pi','2\pi'});
-    % view(3)  % 确保3D视角
-    
-    % 显示时间尺度结果
-    % subplot(3,1,3)
-    % axis off
-    % text(0.1, 0.9, sprintf('拉格朗日时间尺度结果:'), 'FontSize', 14, 'FontWeight', 'bold')
-    % text(0.1, 0.7, sprintf('u方向: T_L_u = %.4f (积分上限 τ_u = %.4f)', T_L_u, tau(zero_cross_idx_u)), 'FontSize', 12, 'Color', 'r')
-    % text(0.1, 0.5, sprintf('v方向: T_L_v = %.4f (积分上限 τ_v = %.4f)', T_L_v, tau(zero_cross_idx_v)), 'FontSize', 12, 'Color', 'g')
-    % text(0.1, 0.3, sprintf('w方向: T_L_w = %.4f (积分上限 τ_w = %.4f)', T_L_w, tau(zero_cross_idx_w)), 'FontSize', 12, 'Color', 'b')
-    % text(0.1, 0.1, sprintf('平均: T_L = %.4f (积分上限 τ = %.4f)', T_L, tau(zero_cross_idx)), 'FontSize', 12, 'FontWeight', 'bold')
-    
-    % 命令行输出结果
-    fprintf('\n拉格朗日时间尺度结果:\n');
-    fprintf('u方向: T_L_u = %.4f (积分上限 τ_u = %.4f)\n', T_L_u, tau(zero_cross_idx_u));
-    fprintf('v方向: T_L_v = %.4f (积分上限 τ_v = %.4f)\n', T_L_v, tau(zero_cross_idx_v));
-    fprintf('w方向: T_L_w = %.4f (积分上限 τ_w = %.4f)\n', T_L_w, tau(zero_cross_idx_w));
-    fprintf('平均: T_L = %.4f (积分上限 τ = %.4f)\n', T_L, tau(zero_cross_idx));
-end
-
 function [bin_centers,mean_velocities,rms_fluctuations] = calculate_mean_velocity(cell_data,bin_edges)
     % 定义分区边界 (0~2.1 以包含所有数据)
     num_bins = length(bin_edges) - 1;
@@ -570,4 +424,50 @@ function [bin_centers,mean_velocities,rms_fluctuations] = calculate_mean_velocit
     bin_centers = (bin_edges(1:end-1) + bin_edges(2:end)) / 2;    
 end
 
-
+% 合并数据集（注意需要编号一一对应，按particleData_1先particleData_2后的顺序排列
+function mergedParticleData = mergeParticleData(particleData_1, particleData_2)
+    % 去除两个变量中的空元胞
+    particleData_1 = particleData_1(~cellfun('isempty', particleData_1));
+    particleData_2 = particleData_2(~cellfun('isempty', particleData_2));
+    
+    % 提取所有 id
+    ids1 = cellfun(@(x) x.id, particleData_1);
+    ids2 = cellfun(@(x) x.id, particleData_2);
+    
+    % 检查 id 是否一一对应
+    if numel(ids1) ~= numel(ids2) || ~all(sort(ids1) == sort(ids2))
+        error('两个 particleData 的 id 不匹配，无法合并');
+    end
+    
+    % 为 particleData_2 创建 id 到索引的映射
+    idMap = containers.Map(ids2, 1:numel(ids2));
+    
+    % 预分配合并后的元胞数组
+    mergedParticleData = cell(size(particleData_1));
+    
+    % 遍历 particleData_1 中的每个元素
+    for i = 1:numel(particleData_1)
+        currentId = particleData_1{i}.id;
+        
+        % 检查 particleData_2 中是否存在相同 id
+        if ~isKey(idMap, currentId)
+            error('在 particleData_2 中找不到 id=%d 的数据', currentId);
+        end
+        
+        % 获取两个数据集
+        data1 = particleData_1{i}.data;
+        data2 = particleData_2{idMap(currentId)}.data;
+        
+        % 检查列数是否一致
+        if size(data1, 2) ~= size(data2, 2)
+            error('id=%d 的数据列数不一致: %d vs %d', currentId, size(data1,2), size(data2,2));
+        end
+        
+        % 垂直合并数据
+        mergedData = [data1; data2];
+        
+        % 创建合并后的结构体
+        mergedStruct = struct('id', currentId, 'data', mergedData);
+        mergedParticleData{i} = mergedStruct;
+    end
+end
